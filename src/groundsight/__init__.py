@@ -8,6 +8,7 @@
     for claim in result.flagged:
         print(claim.verdict, claim.text, claim.diagnosis.cause)
     gs.write_report(result, "report.html")
+
 """
 
 from groundsight._version import __version__
