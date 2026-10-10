@@ -69,8 +69,14 @@ def test_windows_cover_text_with_overlap() -> None:
         assert b.start < a.end  # one sentence of overlap
     assert windows("   ") == []
     assert [w.text for w in windows("no punctuation at all")] == ["no punctuation at all"]
-    long = "word " * 400 + "end."
-    assert len(windows(long, max_words=50)) == 1
+    record = "{'name': 'Finch', " + ", ".join(f"'k{i}': {i}" for i in range(150)) + "}"
+    parts = windows(record, max_words=50)
+    assert len(parts) == 8  # 302 words in 50-word windows, stepping 40
+    assert all(len(p.text.split()) <= 50 for p in parts)
+    assert all(record[p.start : p.end] == p.text for p in parts)
+    assert parts[0].start == 0
+    assert parts[-1].end == len(record)
+    assert parts[1].start < parts[0].end  # word windows overlap
 
 
 @given(st.text(alphabet=st.sampled_from(list("ab .!?\nD-1.,'\"")), max_size=80))

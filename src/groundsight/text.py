@@ -121,19 +121,40 @@ def sentences(text: str, *, min_words: int = 1) -> list[Segment]:
     return segments
 
 
+def _whole(text: str) -> list[Segment]:
+    start, end = _trim(text, 0, len(text))
+    return [Segment(text[start:end], start, end)] if start < end else []
+
+
+def _word_windows(text: str, seg: Segment, max_words: int) -> list[Segment]:
+    """Split a segment longer than ``max_words`` (a table, JSON, a run-on line) into
+    word windows that overlap by a fifth."""
+    words = list(re.finditer(r"\S+", seg.text))
+    if len(words) <= max_words:
+        return [seg]
+    step = max(1, max_words - max_words // 5)
+    out = []
+    for i in range(0, len(words), step):
+        chunk = words[i : i + max_words]
+        start, end = seg.start + chunk[0].start(), seg.start + chunk[-1].end()
+        out.append(Segment(text[start:end], start, end))
+        if i + max_words >= len(words):
+            break
+    return out
+
+
 def windows(text: str, *, max_words: int = 250) -> list[Segment]:
     """Cover ``text`` with windows of whole sentences of at most ``max_words`` words.
 
     Consecutive windows overlap by one sentence, so evidence that straddles a window
-    boundary is still seen whole. A single sentence longer than the budget becomes
-    its own window.
+    boundary is still seen whole. Text without sentence breaks that is longer than the
+    budget (tables, JSON records) is split into overlapping word windows instead.
     """
-    sents = sentences(text)
+    sents: list[Segment] = []
+    for sent in sentences(text) or _whole(text):
+        sents.extend(_word_windows(text, sent, max_words))
     if not sents:
-        stripped_start, stripped_end = _trim(text, 0, len(text))
-        if stripped_start == stripped_end:
-            return []
-        return [Segment(text[stripped_start:stripped_end], stripped_start, stripped_end)]
+        return []
     out: list[Segment] = []
     i = 0
     while i < len(sents):
