@@ -1,4 +1,4 @@
-"""Benchmarks: ``detect`` (RAGTruth), ``triage`` and ``attribution`` (injected faults).
+"""Benchmarks: ``detect`` (RAGTruth) and ``faults`` (triage, verification, attribution).
 
 Run them with ``groundsight bench SUITE [options]``; each suite documents its options
 (``groundsight bench SUITE --help``). They need the ``bench`` and ``models`` extras.

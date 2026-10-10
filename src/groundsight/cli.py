@@ -269,8 +269,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--source", help="name of the labelled dataset")
     p.set_defaults(func=cmd_calibrate)
 
-    p = sub.add_parser("bench", help="run a benchmark suite (detect, triage, attribution)")
-    p.add_argument("suite", choices=["detect", "triage", "attribution"])
+    p = sub.add_parser("bench", help="run a benchmark suite (detect, faults)")
+    p.add_argument("suite", choices=["detect", "faults"])
     p.add_argument("rest", nargs=argparse.REMAINDER, help="options for the suite")
     p.set_defaults(func=cmd_bench)
 
