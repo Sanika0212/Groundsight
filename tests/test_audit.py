@@ -145,9 +145,25 @@ def test_conflicting_passages_without_reference() -> None:
 
 
 def test_is_middle_and_rediagnosis() -> None:
-    assert not is_middle(2, 4)
-    assert [is_middle(i, 6) for i in range(6)] == [False, False, True, True, True, False]
+    assert not is_middle(2, 5)
+    assert [is_middle(i, 7) for i in range(7)] == [False, False, True, True, True, False, False]
     result = run("The Eiffel Tower is 500 metres tall.", [TOWER], diagnose=False)
     assert result.claims[0].diagnosis is None
     diagnose(result)
     assert causes(result) == [Cause.MISREAD_CONTEXT]
+
+
+def test_contradiction_needs_a_passage_about_the_claim() -> None:
+    class Contrary(LexicalChecker):
+        """Says every pair contradicts, like an over-eager NLI model."""
+
+        def score(self, pairs):  # type: ignore[no-untyped-def]
+            return [(0.0, 0.99) for _ in pairs]
+
+    related = audit("The tower is 500 metres tall.", ["The tower is 330 metres tall."],
+                    checker=Contrary(), thresholds=LIMITS)  # fmt: skip
+    unrelated = audit("Snapshots are stored in three data centres.",
+                      ["Snapshots are encrypted before they leave your device."],
+                      checker=Contrary(), thresholds=LIMITS)  # fmt: skip
+    assert related.claims[0].verdict is Verdict.CONTRADICTED
+    assert unrelated.claims[0].verdict is Verdict.UNSUPPORTED

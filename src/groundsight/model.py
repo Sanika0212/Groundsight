@@ -84,10 +84,17 @@ class ClaimCheck:
 @dataclass(frozen=True)
 class Thresholds:
     """Support at or above ``support`` counts as supported; contradiction at or above
-    ``contradiction`` (and above the support score) counts as contradicted."""
+    ``contradiction`` (and above the support score) counts as contradicted.
+
+    A passage can only contradict a claim it is about: a contradiction score counts
+    only when at least ``contradiction_overlap`` of the claim's content words appear in
+    the passage. NLI models otherwise report confident contradictions between unrelated
+    statements on the same subject; those claims are left as unsupported instead.
+    """
 
     support: float = 0.5
     contradiction: float = 0.5
+    contradiction_overlap: float = 0.3
     target_recall: float | None = None  # set when ``support`` comes from conformal calibration
     calibration: str | None = None  # where the thresholds came from
 

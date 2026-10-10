@@ -121,6 +121,11 @@ def audit(
             pairs.append((reference, claim.text))
             index.append((ci, "reference", 0))
     scores = check.score(pairs) if pairs else []
+    gate = limits.contradiction_overlap
+    scores = [
+        (s, c if key[1] in ("*", "reference") or overlap(premise, claim) >= gate else 0.0)
+        for (s, c), key, (premise, claim) in zip(scores, index, pairs, strict=True)
+    ]
 
     window_scores: dict[tuple[int, str, int], tuple[float, float]] = dict(
         zip(index, scores, strict=True)

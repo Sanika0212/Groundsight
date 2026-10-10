@@ -54,8 +54,8 @@ FIXES = {
 
 
 def is_middle(position: int, total: int) -> bool:
-    """Middle of a long context: not among the first two or the last passage."""
-    return total >= 5 and 2 <= position <= total - 2
+    """Middle of a long context: not among the first two or the last two passages."""
+    return total >= 6 and 2 <= position <= total - 3
 
 
 def _label(audit: Audit, chunk_id: str) -> str:
