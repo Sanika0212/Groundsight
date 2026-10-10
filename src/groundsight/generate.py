@@ -240,14 +240,16 @@ class LocalChat:
         self.device = self.device or default_device()
         dtype = torch.float16 if self.dtype == "auto" and self.device != "cpu" else torch.float32
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-        self.model = AutoModelForCausalLM.from_pretrained(self.model_id, torch_dtype=dtype)
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_id, dtype=dtype)
         self.model.to(self.device).eval()
 
     def prompt_ids(self, messages: list[Message]) -> Any:
+        """Token ids of the chat prompt, ending where the assistant's reply begins."""
         self.load()
-        return self.tokenizer.apply_chat_template(
-            messages, add_generation_prompt=True, return_tensors="pt"
-        ).to(self.device)
+        encoded = self.tokenizer.apply_chat_template(
+            messages, add_generation_prompt=True, return_tensors="pt", return_dict=True
+        )
+        return encoded["input_ids"].to(self.device)
 
     def __call__(
         self, messages: list[Message], *, temperature: float = 0.0, seed: int | None = None
