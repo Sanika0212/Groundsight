@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use Groundsight, please cite it as below."
+title: "Groundsight: claim-level grounding, root-cause triage and counterfactual verification for RAG answers"
+type: software
+authors:
+  - family-names: Najan
+    given-names: Sanika Vilas
+    email: sanikanajan@gmail.com
+version: 0.1.0
+date-released: 2026-10-10
+license: MIT
+repository-code: "https://github.com/Sanika0212/Groundsight"
+keywords:
+  - retrieval-augmented generation
+  - hallucination detection
+  - fact checking
+  - conformal prediction
+  - attribution
