@@ -4,8 +4,8 @@ A *profile* stores, for one checker, the support scores of labelled claims from 
 calibration set: claims annotators marked as hallucinated (positives) and claims they
 accepted (negatives). From it:
 
-* :meth:`Profile.balanced` picks the threshold with the best balanced accuracy.
-* :meth:`Profile.conformal` picks the threshold that flags at least ``target_recall`` of
+- :meth:`Profile.balanced` picks the threshold with the best balanced accuracy.
+- :meth:`Profile.conformal` picks the threshold that flags at least ``target_recall`` of
   hallucinated claims. By split conformal prediction, if new hallucinated claims are
   exchangeable with the calibration ones, a new hallucinated claim is flagged with
   probability at least ``target_recall`` (over the draw of the calibration set). The

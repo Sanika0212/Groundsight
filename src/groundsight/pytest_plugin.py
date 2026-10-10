@@ -1,8 +1,8 @@
 """Pytest plugin: a ``grounded`` fixture and command-line options.
 
-* ``--groundsight-checker NAME`` picks the checker (default ``GROUNDSIGHT_CHECKER`` or
+- ``--groundsight-checker NAME`` picks the checker (default ``GROUNDSIGHT_CHECKER`` or
   the library default).
-* ``--groundsight-reports DIR`` writes an HTML report for every failed grounding check.
+- ``--groundsight-reports DIR`` writes an HTML report for every failed grounding check.
 
 .. code-block:: python
 

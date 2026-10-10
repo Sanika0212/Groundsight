@@ -603,8 +603,8 @@ def animate_audit(result: Any, out: Path, mode: str) -> Path:
             fig.text(
                 0.012,
                 0.035,
-                f"{result.groundedness:.0%} supported · {counts['contradicted']} "
-                f"contradicted · {counts['unsupported']} unsupported. Every flag comes with its "
+                f"{result.groundedness:.0%} supported, {counts['contradicted']} "
+                f"contradicted, {counts['unsupported']} unsupported. Every flag comes with its "
                 "evidence and a probable cause.",
                 fontsize=9.6,
                 color=theme.ink,

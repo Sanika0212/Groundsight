@@ -121,7 +121,7 @@ function select(i) {
     if (att && data.attribution) {
       const row = data.attribution.claim_indices.indexOf(i);
       const j = data.attribution.chunk_ids.indexOf(c.id);
-      att.textContent = row >= 0 && j >= 0 ? data.attribution.scores[row][j].toFixed(2) : '–';
+      att.textContent = row >= 0 && j >= 0 ? data.attribution.scores[row][j].toFixed(2) : 'n/a';
     }
   });
   document.getElementById('sel-claim').textContent = `Claim ${i + 1}: “${claim.text}”`;
@@ -206,15 +206,15 @@ def _chunks_html(audit: Audit, attribution: Attribution | None) -> str:
     for i, chunk in enumerate(audit.chunks):
         meta = f"passage {i + 1} of {len(audit.chunks)}"
         if chunk.source:
-            meta += f" · {chunk.source}"
+            meta += f", {chunk.source}"
         if chunk.score is not None:
-            meta += f" · retriever score {chunk.score:.3f}"
-        att = ' · attribution <span class="s-att">–</span> nats' if attribution is not None else ""
+            meta += f", retriever score {chunk.score:.3f}"
+        att = ', attribution <span class="s-att">n/a</span> nats' if attribution is not None else ""
         out.append(
             f'<div class="chunk" data-chunk="{_e(chunk.id)}"><div class="chunk-head">'
-            f"<span><b>{_e(chunk.id)}</b> · {_e(meta)}</span>"
+            f"<span><b>{_e(chunk.id)}</b>: {_e(meta)}</span>"
             '<span class="meter">support <span class="bar"><i class="s-sup-bar" style="width:0%"></i>'
-            '</span><span class="s-sup">0.00</span> · contradiction <span class="s-con">0.00</span>'
+            '</span><span class="s-sup">0.00</span>, contradiction <span class="s-con">0.00</span>'
             f"{att}</span></div>"
             f'<div class="chunk-text">{_e(chunk.text)}</div></div>'
         )
@@ -279,7 +279,7 @@ def render(
 <title>{_e(title)}</title><style>{_CSS}</style></head><body>
 <header><h1>{_e(title)}</h1>{question}{reference}
 <div class="stats"><span class="big">{audit.groundedness:.0%}</span><span class="sub">of claims supported</span>{chips}</div>
-<div class="sub">Checker <b>{_e(audit.checker)}</b> · support threshold {limits.support:.3f} · {calibration}</div>
+<div class="sub">Checker <b>{_e(audit.checker)}</b>, support threshold {limits.support:.3f}, {calibration}</div>
 </header>
 <main>
 <section class="card"><h2>Answer</h2><div class="answer">{_answer_html(audit)}</div>
@@ -292,7 +292,7 @@ def render(
 </tbody></table></details></section>
 {_heatmap_html(audit, attribution) if attribution is not None else ""}
 </main>
-<footer>Groundsight {_e(__version__)} · audit {_e(audit.id)} · verdicts are model judgements; check flagged claims against the sources.</footer>
+<footer>Groundsight {_e(__version__)}, audit {_e(audit.id)}. Verdicts are model judgements; check flagged claims against the sources.</footer>
 <script type="application/json" id="gs-data">{payload}</script>
 <script>{_JS}</script></body></html>
 """

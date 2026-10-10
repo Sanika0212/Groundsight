@@ -4,9 +4,9 @@ A *responder* turns ``(question, chunks, instruction, seed)`` into an answer. Wr
 own pipeline's generation step with :class:`PipelineResponder`, or use a built-in
 generator with the default RAG prompt via :class:`PromptResponder`:
 
-* :class:`OpenAIChat` for OpenAI or any OpenAI-compatible endpoint,
-* :class:`AnthropicChat` for the Anthropic Messages API,
-* :class:`LocalChat` for a Hugging Face instruct model run locally.
+- :class:`OpenAIChat` for OpenAI or any OpenAI-compatible endpoint,
+- :class:`AnthropicChat` for the Anthropic Messages API,
+- :class:`LocalChat` for a Hugging Face instruct model run locally.
 
 API keys are read from the environment (or passed explicitly) and never logged.
 """

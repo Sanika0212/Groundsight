@@ -20,10 +20,10 @@ fault                       change to the context                               
 
 The model's clean answer serves as the reference. For every kept instance:
 
-* **triage** — does the first flagged claim get the expected cause?
-* **verification** — does the intervention for that cause fix the answer more often
+- **triage**: does the first flagged claim get the expected cause?
+- **verification**: does the intervention for that cause fix the answer more often
   than resampling (``--samples`` replays each, temperature 0.7)?
-* **attribution** (edited-source faults) — is the edited paragraph the top-attributed
+- **attribution** (edited-source faults): is the edited paragraph the top-attributed
   chunk for the wrong claim? Compared methods: likelihood leave-one-out with the
   answering model, the same with a smaller proxy model, embedding cosine, word overlap,
   and random.
@@ -399,8 +399,8 @@ def markdown(summary: dict[str, Any]) -> str:
     ]
     for fault, r in summary["by_fault"].items():
         low, high = r["triage_ci"]
-        confirmed = "–" if r["verified"] is None else f"{r['verified']:.0%}"
-        fix = "–" if r["fix_rate"] is None else f"{r['fix_rate']:.0%} vs {r['baseline_rate']:.0%}"
+        confirmed = "n/a" if r["verified"] is None else f"{r['verified']:.0%}"
+        fix = "n/a" if r["fix_rate"] is None else f"{r['fix_rate']:.0%} vs {r['baseline_rate']:.0%}"
         lines.append(
             f"| {fault} | {r['n']} | {r['flagged']:.0%} | {r['triage_accuracy']:.0%} "
             f"[{low:.0%}, {high:.0%}] | {confirmed} | {fix} |"

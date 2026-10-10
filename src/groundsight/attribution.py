@@ -4,8 +4,8 @@ For every claim, attribution measures how much each passage raises the probabili
 the claim's own tokens, by scoring the *actual answer* (teacher forcing) with and
 without that passage in the prompt:
 
-* ``loo`` (leave-one-out) removes one passage at a time: ``n + 1`` forward passes.
-* ``surrogate`` scores random subsets of passages and fits a linear model of each
+- ``loo`` (leave-one-out) removes one passage at a time: ``n + 1`` forward passes.
+- ``surrogate`` scores random subsets of passages and fits a linear model of each
   claim's log-probability on which passages were present, the approach popularised by
   ContextCite. It costs a fixed number of passes however many passages there are.
 
