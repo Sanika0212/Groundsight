@@ -47,12 +47,12 @@ from typing import Any
 
 import numpy as np
 
-from groundsight.audit import audit, get_checker
+from groundsight.audit import audit, get_checker, resolve_thresholds
 from groundsight.bench.detect import cache_dir
 from groundsight.checkers import overlap
 from groundsight.generate import Generator, PromptResponder, build_messages
 from groundsight.metrics import wilson_interval
-from groundsight.model import Audit, Chunk, ClaimCheck
+from groundsight.model import Audit, Chunk, ClaimCheck, Thresholds
 from groundsight.verify import verify
 
 DATA_URL = (
@@ -250,7 +250,7 @@ def first_flag(result: Audit) -> ClaimCheck | None:
 
 
 def evaluate_triage(
-    instances: Sequence[Instance], checker: str
+    instances: Sequence[Instance], checker: str, thresholds: Thresholds | None = None
 ) -> tuple[list[dict[str, Any]], list[Audit]]:
     check = get_checker(checker)
     rows, audits = [], []
@@ -261,6 +261,7 @@ def evaluate_triage(
             question=inst.question,
             reference=inst.clean_answer,
             checker=check,
+            thresholds=thresholds,
         )
         claim = first_flag(result)
         predicted = claim.diagnosis.cause.value if claim and claim.diagnosis else "not flagged"
@@ -482,7 +483,10 @@ def main(argv: Sequence[str]) -> int:
             json.dumps({"instances": [asdict(i) for i in instances], "stats": stats}, indent=1)
         )
     print(f"{len(instances)} instances: {dict(Counter(i.fault for i in instances))}")
-    triage, audits = evaluate_triage(instances, args.checker)
+    # Resolve the calibrated thresholds once, so every audit in the run uses the same ones.
+    thresholds = resolve_thresholds(get_checker(args.checker), None, None)
+    print(f"thresholds: support {thresholds.support:.4f} ({thresholds.calibration})")
+    triage, audits = evaluate_triage(instances, args.checker, thresholds)
     verification = (
         []
         if args.skip_verify
@@ -496,6 +500,7 @@ def main(argv: Sequence[str]) -> int:
     )
     summary = summarize(triage, verification, attribution, stats)
     summary["model"] = args.model
+    summary["thresholds"] = asdict(thresholds)
     (out / "results.json").write_text(
         json.dumps(
             {
