@@ -127,8 +127,23 @@ def test_main_uses_cached_instances(tmp_path: Path, monkeypatch: pytest.MonkeyPa
             return [(0.5, 0.0) for _ in pairs]
 
     monkeypatch.setattr("groundsight.generate.LocalChat", FakeChat)
+    monkeypatch.setattr("groundsight.generate.OpenAIChat", FakeChat)
     monkeypatch.setattr("groundsight.attribution.LocalScorer", FakeScorer)
     monkeypatch.setattr("groundsight.checkers.CosineChecker", FakeCosine)
     assert faults.main(["--out", str(out), "--checker", "lexical", "--samples", "1"]) == 0
     assert "Triage correct" in (out / "results.md").read_text()
     assert isinstance(instances[0], Instance)
+
+
+def test_remote_models_ask_first_and_estimate(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    assert faults.estimate_calls(100, 3) > faults.estimate_calls(100, 0)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    generator, remote = faults.make_generator("openai:gpt-x")
+    assert remote
+    assert generator.name == "openai:gpt-x"
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    assert faults.make_generator("anthropic:m")[1]
+    monkeypatch.setattr("builtins.input", lambda prompt: "no")
+    assert faults.main(["--model", "openai:gpt-x", "--out", str(tmp_path)]) == 1

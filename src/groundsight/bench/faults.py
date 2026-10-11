@@ -417,26 +417,59 @@ def markdown(summary: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def estimate_calls(questions: int, samples: int, clean_rate: float = 0.5) -> int:
+    """Rough number of model calls for a run (to show before using a paid API).
+
+    Per question: a clean answer and a long-context check; for the questions answered
+    correctly (``clean_rate``), up to four faulted answers and, for each kept instance,
+    ``samples`` replays of the resampling baseline and of each of up to two fixes.
+    """
+    kept = questions * clean_rate * 4 * 0.6
+    return int(questions * 2 + questions * clean_rate * 4 + kept * samples * 3)
+
+
+def make_generator(spec: str) -> tuple[Generator, bool]:
+    """``openai:MODEL``, ``anthropic:MODEL`` or a Hugging Face model id (run locally)."""
+    from groundsight.generate import AnthropicChat, LocalChat, OpenAIChat
+
+    provider, _, model = spec.partition(":")
+    if provider == "openai" and model:
+        return OpenAIChat(model=model, max_tokens=48), True
+    if provider == "anthropic" and model:
+        return AnthropicChat(model=model, max_tokens=48), True
+    return LocalChat(spec, max_new_tokens=48), False
+
+
 def main(argv: Sequence[str]) -> int:
     from groundsight.attribution import LocalScorer
     from groundsight.checkers import CosineChecker
-    from groundsight.generate import LocalChat
 
     parser = argparse.ArgumentParser(prog="groundsight bench faults", description=__doc__)
     parser.add_argument("--questions", type=int, default=300)
-    parser.add_argument("--model", default="Qwen/Qwen2.5-1.5B-Instruct")
+    parser.add_argument(
+        "--model",
+        default="Qwen/Qwen2.5-1.5B-Instruct",
+        help="answering model: a Hugging Face id (local), openai:MODEL or anthropic:MODEL",
+    )
     parser.add_argument("--proxy", default="Qwen/Qwen2.5-0.5B-Instruct")
     parser.add_argument("--checker", default="minicheck+nli")
     parser.add_argument("--samples", type=int, default=3)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--skip-verify", action="store_true")
+    parser.add_argument("--yes", action="store_true", help="don't ask before calling a paid API")
     parser.add_argument("--out", default="runs/faults")
     args = parser.parse_args(argv)
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    chat = LocalChat(args.model, max_new_tokens=48)
+    chat, remote = make_generator(args.model)
     cached = out / "instances.json"
+    if remote and not args.yes:
+        calls = estimate_calls(args.questions, 0 if args.skip_verify else args.samples)
+        print(f"about {calls:,} calls to {args.model} (roughly {calls * 1_100:,} input tokens)")
+        if input("continue? [y/N] ").strip().lower() not in {"y", "yes"}:
+            print("cancelled")
+            return 1
     if cached.exists():
         data = json.loads(cached.read_text())
         instances = [Instance(**i) for i in data["instances"]]
@@ -455,14 +488,14 @@ def main(argv: Sequence[str]) -> int:
         if args.skip_verify
         else evaluate_verification(instances, audits, chat, samples=args.samples)
     )
-    scorers = {
-        "likelihood (answering model)": LocalScorer(chat),
-        "likelihood (0.5B proxy)": LocalScorer(args.proxy),
-    }
+    scorers: dict[str, Any] = {"likelihood (0.5B proxy)": LocalScorer(args.proxy)}
+    if not remote:  # a hosted model's own likelihoods are not available
+        scorers["likelihood (answering model)"] = LocalScorer(chat)  # type: ignore[arg-type]
     attribution = evaluate_attribution(
         instances, audits, scorers, cosine=CosineChecker(), seed=args.seed
     )
     summary = summarize(triage, verification, attribution, stats)
+    summary["model"] = args.model
     (out / "results.json").write_text(
         json.dumps(
             {
