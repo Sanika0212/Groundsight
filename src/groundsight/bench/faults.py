@@ -34,6 +34,7 @@ The model's clean answer serves as the reference. For every kept instance:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 import re
@@ -277,10 +278,25 @@ def evaluate_verification(
     *,
     samples: int,
     progress: Callable[[str], None] = print,
+    cache: Path | None = None,
 ) -> list[dict[str, Any]]:
+    """Replay each flagged answer with its fix. With ``cache``, every row is written as it
+    is computed, so an interrupted run resumes without repeating (paid) model calls."""
     responder = PromptResponder(generator, temperature=0.7, instruction=INSTRUCTION)
+    done: dict[str, dict[str, Any]] = {}
+    if cache is not None and cache.exists():
+        for line in cache.read_text().splitlines():
+            if line.strip():
+                row = json.loads(line)
+                done[row.pop("key")] = row
     rows: list[dict[str, Any]] = []
     for n, (inst, result) in enumerate(zip(instances, audits, strict=True)):
+        key = hashlib.sha256(
+            f"{inst.fault}|{inst.question}|{inst.faulted_answer}".encode()
+        ).hexdigest()
+        if key in done:
+            rows.append(done[key])
+            continue
         claim = first_flag(result)
         if claim is None or claim.diagnosis is None:
             rows.append({"fault": inst.fault, "verified": None})
@@ -299,6 +315,9 @@ def evaluate_verification(
                 "intervention": best.intervention.label if best else None,
             }
         )
+        if cache is not None:
+            with cache.open("a") as f:
+                f.write(json.dumps({"key": key, **rows[-1]}) + "\n")
         if (n + 1) % 20 == 0:
             progress(f"  verified {n + 1}/{len(instances)}")
     return rows
@@ -490,7 +509,13 @@ def main(argv: Sequence[str]) -> int:
     verification = (
         []
         if args.skip_verify
-        else evaluate_verification(instances, audits, chat, samples=args.samples)
+        else evaluate_verification(
+            instances,
+            audits,
+            chat,
+            samples=args.samples,
+            cache=out / f"verification-{args.checker}-{args.samples}.jsonl",
+        )
     )
     scorers: dict[str, Any] = {"likelihood (0.5B proxy)": LocalScorer(args.proxy)}
     if not remote:  # a hosted model's own likelihoods are not available

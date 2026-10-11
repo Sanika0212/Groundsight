@@ -78,10 +78,21 @@ def test_pipeline_on_a_fake_reader(tmp_path: Path) -> None:
     assert all(not correct(i.faulted_answer, i.answer) for i in instances)
     triage, audits = evaluate_triage(instances, "lexical")
     assert len(triage) == len(instances)
+    cache = tmp_path / "verification.jsonl"
     verification = evaluate_verification(
-        instances, audits, reader, samples=2, progress=lines.append
+        instances, audits, reader, samples=2, progress=lines.append, cache=cache
     )
     assert len(verification) == len(instances)
+
+    class Unused:
+        def __call__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+            raise AssertionError("cached rows must not call the model again")
+
+    flagged = [r for r in verification if r["verified"] is not None]
+    if flagged:
+        assert cache.exists()
+        again = evaluate_verification(instances, audits, Unused(), samples=2, cache=cache)  # type: ignore[arg-type]
+        assert again == verification
 
     class Scorer:
         def span_logprobs(self, messages, answer: str, spans: Sequence[tuple[int, int]]):  # type: ignore[no-untyped-def]
