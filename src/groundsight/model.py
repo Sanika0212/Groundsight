@@ -83,28 +83,36 @@ class ClaimCheck:
 
 @dataclass(frozen=True)
 class Thresholds:
-    """Support at or above ``support`` counts as supported; contradiction at or above
-    ``contradiction`` (and above the support score) counts as contradicted.
+    """How support and contradiction scores become a verdict.
+
+    A claim with support at or above ``support`` is supported. An unsupported claim
+    whose contradiction score reaches ``contradiction`` is contradicted; otherwise it
+    is unsupported. The support checker alone decides whether a claim is flagged: on
+    RAGTruth, letting NLI contradictions override support added false alarms without
+    improving detection. Set ``contradiction_overrides_support`` to flag supported
+    claims that another passage strongly contradicts (conflicting sources) without a
+    reference answer.
 
     A passage can only contradict a claim it is about: a contradiction score counts
     only when at least ``contradiction_overlap`` of the claim's content words appear in
     the passage. NLI models otherwise report confident contradictions between unrelated
-    statements on the same subject; those claims are left as unsupported instead.
+    statements on the same subject.
     """
 
     support: float = 0.5
     contradiction: float = 0.5
     contradiction_overlap: float = 0.3
+    contradiction_overrides_support: bool = False
     target_recall: float | None = None  # set when ``support`` comes from conformal calibration
     calibration: str | None = None  # where the thresholds came from
 
     def verdict(self, support: float, contradiction: float) -> Verdict:
-        contradicted = contradiction >= self.contradiction and contradiction > support
-        if support >= self.support and not contradicted:
+        contradicted = contradiction >= self.contradiction
+        if support >= self.support:
+            if self.contradiction_overrides_support and contradicted and contradiction > support:
+                return Verdict.CONTRADICTED
             return Verdict.SUPPORTED
-        if contradicted:
-            return Verdict.CONTRADICTED
-        return Verdict.UNSUPPORTED
+        return Verdict.CONTRADICTED if contradicted else Verdict.UNSUPPORTED
 
 
 @dataclass

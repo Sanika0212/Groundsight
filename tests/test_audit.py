@@ -180,3 +180,13 @@ def test_evidence_can_be_skipped_for_speed() -> None:
     fast = run("The Eiffel Tower is 500 metres tall.", [TOWER], evidence=False)
     assert fast.claims[0].evidence is None
     assert fast.claims[0].verdict is Verdict.CONTRADICTED
+
+
+def test_support_alone_decides_flags_unless_overrides_are_enabled() -> None:
+    strict = Thresholds(support=0.6, contradiction=0.5)
+    assert strict.verdict(0.9, 0.99) is Verdict.SUPPORTED
+    assert strict.verdict(0.2, 0.7) is Verdict.CONTRADICTED
+    assert strict.verdict(0.2, 0.1) is Verdict.UNSUPPORTED
+    disputes = Thresholds(support=0.6, contradiction=0.5, contradiction_overrides_support=True)
+    assert disputes.verdict(0.9, 0.99) is Verdict.CONTRADICTED
+    assert disputes.verdict(0.9, 0.7) is Verdict.SUPPORTED  # contradiction must beat support
