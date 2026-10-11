@@ -28,13 +28,13 @@ loaded before pytest-cov starts, so `--cov` would miss the module-level lines.
 
 ## Ground rules
 
-- **Tests never download weights or call an API.** Use the `lexical` checker, scripted
-  checkers and `httpx.MockTransport`. Tests that need real weights are marked `models`
-  and run only with `GROUNDSIGHT_TEST_MODELS=1`.
-- **Numbers come from runs.** Every number in the README must be reproducible with
-  `groundsight bench` and `scripts/make_figures.py`, and docs/benchmarks.md must list
-  the exact commands.
-- **Verdicts carry evidence.** A new checker or rule must still point each verdict at
-  the passage span it rests on.
-- Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`,
-  `docs:`, `test:`, `chore:`, `ci:`).
+1. **Tests never download weights or call an API.** Use the `lexical` checker, scripted
+   checkers and `httpx.MockTransport`. Tests that need real weights are marked `models`
+   and run only with `GROUNDSIGHT_TEST_MODELS=1`.
+2. **Numbers come from runs.** Every number in the README must be reproducible with
+   `groundsight bench` and `scripts/make_figures.py`, and docs/benchmarks.md must list
+   the exact commands.
+3. **Verdicts carry evidence.** A new checker or rule must still point each verdict at
+   the passage span it rests on.
+4. Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`,
+   `docs:`, `test:`, `chore:`, `ci:`).

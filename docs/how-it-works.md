@@ -28,23 +28,23 @@ contradiction probability.
 
 Scoring details:
 
-- **Long passages** are checked in windows of whole sentences (250 words by default,
-  overlapping by one sentence). Text without sentence breaks, such as tables or JSON,
-  is split into overlapping word windows.
-- **Multi-hop claims** that combine facts from two passages are also checked against
-  all passages joined together, when they fit.
-- **Contradictions need a related passage.** A contradiction counts only from a passage
-  that shares at least 30% of the claim's content words. Without this gate, NLI models
-  report confident contradictions between unrelated statements on the same subject.
-  The RAGTruth benchmark measures the gate against human "evident conflict" labels.
-- **Evidence** is the window, refined to its single best sentence when that sentence
-  carries most of the window's score. The report highlights it inside the passage.
+1. **Long passages** are checked in windows of whole sentences (250 words by default,
+   overlapping by one sentence). Text without sentence breaks, such as tables or JSON,
+   is split into overlapping word windows.
+2. **Multi-hop claims** that combine facts from two passages are also checked against
+   all passages joined together, when they fit.
+3. **Contradictions need a related passage.** A contradiction counts only from a passage
+   that shares at least 30% of the claim's content words. Without this gate, NLI models
+   report confident contradictions between unrelated statements on the same subject.
+   The RAGTruth benchmark measures the gate against human "evident conflict" labels.
+4. **Evidence** is the window, refined to its single best sentence when that sentence
+   carries most of the window's score. The report highlights it inside the passage.
 
 The verdict follows from two thresholds:
 
-- **supported** if support ≥ `support` and the claim is not contradicted;
-- **contradicted** if contradiction ≥ `contradiction` and contradiction > support;
-- **unsupported** otherwise.
+1. **supported** if support ≥ `support` and the claim is not contradicted;
+2. **contradicted** if contradiction ≥ `contradiction` and contradiction > support;
+3. **unsupported** otherwise.
 
 ## Calibration and the recall guarantee
 
@@ -52,25 +52,25 @@ The support threshold comes from a *calibration profile*: the checker's support 
 on claims that annotators labelled as hallucinated or not. Groundsight ships profiles
 fitted on the RAGTruth training split.
 
-- By default, the threshold maximises balanced accuracy on the calibration data.
-- With `target_recall=0.9`, the threshold is the ⌈(n + 1) × 0.9⌉-th smallest support score
-  among the *n* hallucinated calibration claims (split conformal prediction).
-  - If new hallucinated claims are exchangeable with the calibration ones, a new
-    hallucinated claim is flagged with probability at least 0.9, on average over
-    calibration sets.
-  - The price is more false alarms on supported claims, which the profile reports.
-  - The guarantee is only as good as the match between your data and the calibration
-    data. Use `groundsight calibrate` to fit a profile on labelled examples from your
-    own domain.
+1. By default, the threshold maximises balanced accuracy on the calibration data.
+2. With `target_recall=0.9`, the threshold is the ⌈(n + 1) × 0.9⌉-th smallest support score
+   among the *n* hallucinated calibration claims (split conformal prediction).
+   1. If new hallucinated claims are exchangeable with the calibration ones, a new
+      hallucinated claim is flagged with probability at least 0.9, on average over
+      calibration sets.
+   2. The price is more false alarms on supported claims, which the profile reports.
+   3. The guarantee is only as good as the match between your data and the calibration
+      data. Use `groundsight calibrate` to fit a profile on labelled examples from your
+      own domain.
 
 ## 3. Triage: why did the claim go wrong?
 
 Every flagged claim gets a *probable cause*. The rules use three signals:
 
-- which passages support or contradict the claim;
-- how topically related the closest passage is (word overlap: a relevance signal,
-  never a grounding signal);
-- when a reference answer is given, whether any passage contains that answer.
+1. which passages support or contradict the claim;
+2. how topically related the closest passage is (word overlap: a relevance signal,
+   never a grounding signal);
+3. when a reference answer is given, whether any passage contains that answer.
 
 | Cause | Pattern | Where to fix it |
 |---|---|---|
@@ -87,9 +87,9 @@ The cause is a hypothesis until it is verified.
 
 `verify(audit, responder)` regenerates the answer in two ways:
 
-- `samples` times **with** the intervention that the cause implies;
-- `samples` times **without** any change (plain resampling at the same temperature,
-  the noise floor).
+1. `samples` times **with** the intervention that the cause implies;
+2. `samples` times **without** any change (plain resampling at the same temperature,
+   the noise floor).
 
 | Cause | Intervention |
 |---|---|
@@ -100,9 +100,9 @@ The cause is a hypothesis until it is verified.
 
 A sample counts as fixed in one of two ways:
 
-- without a reference, the new answer no longer asserts the claim (the checker, with
-  the new answer as premise);
-- with a reference, the new answer states the reference.
+1. without a reference, the new answer no longer asserts the claim (the checker, with
+   the new answer as premise);
+2. with a reference, the new answer states the reference.
 
 A cause is **confirmed** when the intervention's fix rate exceeds the resampling rate,
 and the 95% Newcombe interval on the difference excludes zero. `estimate()` and the
@@ -119,20 +119,20 @@ local Hugging Face model (`LocalChat`).
 teacher forcing, with and without each passage in the prompt. The score is the
 log-probability the passage adds, in nats.
 
-- `loo` uses `n + 1` forward passes (default up to 12 passages).
-- `surrogate` scores random subsets and fits a ridge model per claim, at a fixed cost
-  for any number of passages.
-- A small local model can stand in for a hosted one (a proxy). The fault benchmark
-  measures how often the proxy agrees.
+1. `loo` uses `n + 1` forward passes (default up to 12 passages).
+2. `surrogate` scores random subsets and fits a ridge model per claim, at a fixed cost
+   for any number of passages.
+3. A small local model can stand in for a hosted one (a proxy). The fault benchmark
+   measures how often the proxy agrees.
 
 This replaces attention-based attribution, which reads attention weights of the
 prompt rather than the probability of what the model actually said.
 
 ## Capture, storage and outputs
 
-- **Capture.** `trace()` with `@retriever` / `@generator`, or `capture_http()` for
-  OpenAI- and Anthropic-style chat calls made through httpx.
-- **Storage.** Audits are appended to `.groundsight/audits.jsonl`.
-- **Viewing.** `groundsight serve` shows the store live on localhost.
-- **Reports.** `write_report()` writes a single HTML file.
-- **Export.** `to_otlp()` exports one `gen_ai.evaluation.result` event per claim.
+1. **Capture.** `trace()` with `@retriever` / `@generator`, or `capture_http()` for
+   OpenAI- and Anthropic-style chat calls made through httpx.
+2. **Storage.** Audits are appended to `.groundsight/audits.jsonl`.
+3. **Viewing.** `groundsight serve` shows the store live on localhost.
+4. **Reports.** `write_report()` writes a single HTML file.
+5. **Export.** `to_otlp()` exports one `gen_ai.evaluation.result` event per claim.

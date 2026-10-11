@@ -11,33 +11,33 @@ with human span annotations of hallucinations.
 
 Setup:
 
-- **Labels.** An answer sentence is labelled hallucinated if any annotated span
-  overlaps it.
-- **Passages.** QA contexts are split into their retrieved passages (separated by
-  blank lines). Summary and data-to-text contexts are one document each, checked in
-  windows.
-- **Calibration.** Each checker's profile is fitted on a stratified sample of the
-  **train** split: 300 answers per task, 900 in total.
-- **Evaluation.** Everything is evaluated on a stratified sample of the **test** split:
-  300 answers per task, 900 in total (about 6,000 sentences). Model checkers run at a
-  few pairs per second on a laptop GPU, which is what bounds the sample.
+1. **Labels.** An answer sentence is labelled hallucinated if any annotated span
+   overlaps it.
+2. **Passages.** QA contexts are split into their retrieved passages (separated by
+   blank lines). Summary and data-to-text contexts are one document each, checked in
+   windows.
+3. **Calibration.** Each checker's profile is fitted on a stratified sample of the
+   **train** split: 300 answers per task, 900 in total.
+4. **Evaluation.** Everything is evaluated on a stratified sample of the **test** split:
+   300 answers per task, 900 in total (about 6,000 sentences). Model checkers run at a
+   few pairs per second on a laptop GPU, which is what bounds the sample.
 
 Metrics:
 
-- **AUROC** for ranking hallucinated sentences below supported ones (threshold-free).
-- **Balanced accuracy** at the threshold chosen on train.
-- For each conformal target recall (80%, 90%, 95%): the recall actually achieved on
-  test, and the share of supported sentences flagged (false alarms).
-- **Response-level balanced accuracy**: a response is flagged if any sentence is.
-- **Contradiction vs annotated "evident conflict" spans**, as the overlap gate varies.
-  This is how the default gate (0.3) was chosen.
+1. **AUROC** for ranking hallucinated sentences below supported ones (threshold-free).
+2. **Balanced accuracy** at the threshold chosen on train.
+3. For each conformal target recall (80%, 90%, 95%): the recall actually achieved on
+   test, and the share of supported sentences flagged (false alarms).
+4. **Response-level balanced accuracy**: a response is flagged if any sentence is.
+5. **Contradiction vs annotated "evident conflict" spans**, as the overlap gate varies.
+   This is how the default gate (0.3) was chosen.
 
 Baselines:
 
-- `cosine`: embedding similarity (all-MiniLM-L6-v2), with its threshold calibrated
-  like the others. A `cosine@0.4` row applies the fixed 0.4 cut-off that is common in
-  RAG tooling.
-- `lexical`: word overlap.
+1. `cosine`: embedding similarity (all-MiniLM-L6-v2), with its threshold calibrated
+   like the others. A `cosine@0.4` row applies the fixed 0.4 cut-off that is common in
+   RAG tooling.
+2. `lexical`: word overlap.
 
 Reproduce:
 
@@ -72,20 +72,20 @@ gold. The answering model is Qwen2.5-1.5B-Instruct, run locally.
 
 The model's clean answer is the reference. For each kept instance:
 
-- **Triage.** Does the first flagged claim get the expected cause?
-- **Verification.** The matching intervention and plain resampling are each replayed
-  `--samples` times at temperature 0.7. Is the cause confirmed (fix rate above
-  resampling, 95% Newcombe interval above zero)?
-- **Attribution** (edited-source faults only). Is the edited paragraph ranked first for
-  the wrong claim? Methods compared:
-  - likelihood leave-one-out with the answering model;
-  - the same with Qwen2.5-0.5B-Instruct as a proxy;
-  - embedding similarity;
-  - word overlap;
-  - random.
+1. **Triage.** Does the first flagged claim get the expected cause?
+2. **Verification.** The matching intervention and plain resampling are each replayed
+   `--samples` times at temperature 0.7. Is the cause confirmed (fix rate above
+   resampling, 95% Newcombe interval above zero)?
+3. **Attribution** (edited-source faults only). Is the edited paragraph ranked first for
+   the wrong claim? Methods compared:
+   1. likelihood leave-one-out with the answering model;
+   2. the same with Qwen2.5-0.5B-Instruct as a proxy;
+   3. embedding similarity;
+   4. word overlap;
+   5. random.
 
-  In `conflicting_sources` the edited copy and the original differ only in the answer
-  string. That is the case where similarity-based attribution has nothing to go on.
+   In `conflicting_sources` the edited copy and the original differ only in the answer
+   string. That is the case where similarity-based attribution has nothing to go on.
 
 Reproduce:
 
@@ -95,9 +95,9 @@ uv run groundsight bench faults --questions 400 --samples 3 --out runs/faults
 
 ## Limits
 
-- **Small, local answering model.** Hosted models fail differently and less often.
-- **Synthetic faults.** They are realistic edits, but synthetic. Natural failures
-  usually mix causes, and triage names one.
-- **English Wikipedia (HotpotQA) and RAGTruth's three tasks only.**
-- **Calibration transfers imperfectly.** Recalibrate on your own data before relying on
-  the recall guarantee.
+1. **Small, local answering model.** Hosted models fail differently and less often.
+2. **Synthetic faults.** They are realistic edits, but synthetic. Natural failures
+   usually mix causes, and triage names one.
+3. **English Wikipedia (HotpotQA) and RAGTruth's three tasks only.**
+4. **Calibration transfers imperfectly.** Recalibrate on your own data before relying on
+   the recall guarantee.

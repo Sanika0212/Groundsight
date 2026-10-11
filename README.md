@@ -27,34 +27,34 @@ which part of the pipeline to fix.
 
 ## What you get
 
-- **Claim-level verdicts with evidence.** Each sentence of the answer is checked
-  against every passage, in windows for long ones. The verdict points at the sentence
-  of the passage that supports or contradicts it.
-- **Thresholds you can trust.** They are calibrated on RAGTruth's human labels. Ask for
-  a recall target, for example "catch at least 90% of unsupported claims", and get a
-  threshold with a conformal guarantee plus the false-alarm rate it costs.
-- **Root-cause triage.** Every flagged claim gets one of six causes, each with the
-  passages involved and where to fix it:
-  - retrieval miss;
-  - misleading source;
-  - conflicting sources;
-  - misread context;
-  - unsupported addition;
-  - evidence buried mid-context.
-- **Verification by replay.** Regenerate the answer with the fix the cause implies, for
-  example dropping the misleading passage or moving the evidence to the top. Compare
-  the result with plain resampling. A cause is confirmed only when the fix beats the
-  noise.
-- **Attribution that reads the answer.** Find which passage made the model say each
-  claim by scoring the claim's own tokens with and without each passage. A small local
-  model can act as a proxy for a hosted one.
-- **Local by default.** Checking, triage and attribution run on open models on your
-  machine. Only verification calls your LLM, and only when you ask.
-- **Fits your workflow.** You get:
-  - a single-file HTML report and a live local viewer;
-  - `assert_grounded` and a pytest fixture for RAG regression tests;
-  - a CLI;
-  - OpenTelemetry export with one `gen_ai.evaluation.result` event per claim.
+1. **Claim-level verdicts with evidence.** Each sentence of the answer is checked
+   against every passage, in windows for long ones. The verdict points at the sentence
+   of the passage that supports or contradicts it.
+2. **Thresholds you can trust.** They are calibrated on RAGTruth's human labels. Ask for
+   a recall target, for example "catch at least 90% of unsupported claims", and get a
+   threshold with a conformal guarantee plus the false-alarm rate it costs.
+3. **Root-cause triage.** Every flagged claim gets one of six causes, each with the
+   passages involved and where to fix it:
+   1. retrieval miss;
+   2. misleading source;
+   3. conflicting sources;
+   4. misread context;
+   5. unsupported addition;
+   6. evidence buried mid-context.
+4. **Verification by replay.** Regenerate the answer with the fix the cause implies, for
+   example dropping the misleading passage or moving the evidence to the top. Compare
+   the result with plain resampling. A cause is confirmed only when the fix beats the
+   noise.
+5. **Attribution that reads the answer.** Find which passage made the model say each
+   claim by scoring the claim's own tokens with and without each passage. A small local
+   model can act as a proxy for a hosted one.
+6. **Local by default.** Checking, triage and attribution run on open models on your
+   machine. Only verification calls your LLM, and only when you ask.
+7. **Fits your workflow.** You get:
+   1. a single-file HTML report and a live local viewer;
+   2. `assert_grounded` and a pytest fixture for RAG regression tests;
+   3. a CLI;
+   4. OpenTelemetry export with one `gen_ai.evaluation.result` event per claim.
 
 ## Quickstart
 
@@ -175,21 +175,21 @@ them.
 The two benchmarks are being finalised. [docs/benchmarks.md](docs/benchmarks.md) has
 the setup:
 
-- claim-level detection on RAGTruth;
-- triage, verification and attribution on HotpotQA answers broken by injected faults,
-  both with a local model and with gpt-4.1-mini.
+1. claim-level detection on RAGTruth;
+2. triage, verification and attribution on HotpotQA answers broken by injected faults,
+   both with a local model and with gpt-4.1-mini.
 
 ## Limits
 
-- **Checkers are models and they make mistakes.** Treat every verdict as a lead to
-  check, not a ruling. Reports show the evidence so you can.
-- **The recall guarantee assumes your claims resemble the calibration data.** Shipped
-  profiles come from RAGTruth (English QA, summaries, data-to-text). Recalibrate with
-  `groundsight calibrate` on labelled examples from your domain.
-- **Triage names one cause.** Real failures can mix causes. Verification tells you
-  whether the named cause's fix works, not whether it is the only problem.
-- **Attribution needs likelihoods.** With a hosted model it uses a local proxy, which
-  can disagree with the hosted model.
+1. **Checkers are models and they make mistakes.** Treat every verdict as a lead to
+   check, not a ruling. Reports show the evidence so you can.
+2. **The recall guarantee assumes your claims resemble the calibration data.** Shipped
+   profiles come from RAGTruth (English QA, summaries, data-to-text). Recalibrate with
+   `groundsight calibrate` on labelled examples from your domain.
+3. **Triage names one cause.** Real failures can mix causes. Verification tells you
+   whether the named cause's fix works, not whether it is the only problem.
+4. **Attribution needs likelihoods.** With a hosted model it uses a local proxy, which
+   can disagree with the hosted model.
 
 ## Development
 
@@ -203,21 +203,21 @@ uv run coverage run -m pytest && uv run coverage report      # no weights, no ne
 
 ## References
 
-- Liyan Tang, Philippe Laban and Greg Durrett. MiniCheck: efficient fact-checking of
-  LLMs on grounding documents. *EMNLP*, 2024.
-- Cheng Niu et al. RAGTruth: a hallucination corpus for developing trustworthy
-  retrieval-augmented language models. *ACL*, 2024.
-- Benjamin Cohen-Wang, Harshay Shah, Kristian Georgiev and Aleksander Madry. ContextCite:
-  attributing model generation to context. *NeurIPS*, 2024.
-- Fengyuan Liu, Nikhil Kandpal and Colin Raffel. AttriBoT: a bag of tricks for
-  efficiently approximating leave-one-out context attribution. *ICLR*, 2025.
-- Christopher Mohri and Tatsunori Hashimoto. Language models with conformal factuality
-  guarantees. *ICML*, 2024.
-- Nelson F. Liu et al. Lost in the middle: how language models use long contexts.
-  *TACL*, 2024.
-- Zhilin Yang et al. HotpotQA: a dataset for diverse, explainable multi-hop question
-  answering. *EMNLP*, 2018.
-- OpenTelemetry. Semantic conventions for generative AI systems.
+1. Liyan Tang, Philippe Laban and Greg Durrett. MiniCheck: efficient fact-checking of
+   LLMs on grounding documents. *EMNLP*, 2024.
+2. Cheng Niu et al. RAGTruth: a hallucination corpus for developing trustworthy
+   retrieval-augmented language models. *ACL*, 2024.
+3. Benjamin Cohen-Wang, Harshay Shah, Kristian Georgiev and Aleksander Madry. ContextCite:
+   attributing model generation to context. *NeurIPS*, 2024.
+4. Fengyuan Liu, Nikhil Kandpal and Colin Raffel. AttriBoT: a bag of tricks for
+   efficiently approximating leave-one-out context attribution. *ICLR*, 2025.
+5. Christopher Mohri and Tatsunori Hashimoto. Language models with conformal factuality
+   guarantees. *ICML*, 2024.
+6. Nelson F. Liu et al. Lost in the middle: how language models use long contexts.
+   *TACL*, 2024.
+7. Zhilin Yang et al. HotpotQA: a dataset for diverse, explainable multi-hop question
+   answering. *EMNLP*, 2018.
+8. OpenTelemetry. Semantic conventions for generative AI systems.
 
 ## License
 
