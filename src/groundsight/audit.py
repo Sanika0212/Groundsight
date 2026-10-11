@@ -76,6 +76,7 @@ def audit(
     max_words: int = 250,
     min_claim_words: int = 3,
     joint: bool = True,
+    evidence: bool = True,
     diagnose: bool = True,
     meta: Mapping[str, Any] | None = None,
 ) -> Audit:
@@ -96,6 +97,8 @@ def audit(
         min_claim_words: sentences shorter than this are not treated as claims.
         joint: also check each claim against all chunks together, so a claim that
             combines facts from two passages can be supported.
+        evidence: point each claim at its best evidence sentence. This rescores the
+            sentences of the best window; turn it off when only verdicts are needed.
         diagnose: attach a probable cause to every flagged claim (see :mod:`triage`).
     """
     chunk_list = as_chunks(chunks)
@@ -161,7 +164,8 @@ def audit(
             )
         )
 
-    _attach_evidence(results, chunk_list, chunk_windows, window_scores, check)
+    if evidence:
+        _attach_evidence(results, chunk_list, chunk_windows, window_scores, check)
     result = Audit(
         answer=answer,
         chunks=chunk_list,

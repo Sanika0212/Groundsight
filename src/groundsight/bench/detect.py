@@ -20,7 +20,7 @@ For every checker the benchmark:
 The ``cosine`` checker reproduces the common embedding-similarity shortcut; the
 ``cosine@0.4`` row applies it with the popular fixed 0.4 cut-off.
 
-    groundsight bench detect --train-per-task 600 --test-per-task 900 \\
+    groundsight bench detect --train-per-task 300 \\
         --checkers cosine lexical nli minicheck hhem --out runs/detect
 """
 
@@ -143,6 +143,7 @@ def score(items: Sequence[Example], checker: str, *, progress: bool = True) -> l
             checker=check,
             thresholds=Thresholds(contradiction_overlap=0.0),
             diagnose=False,
+            evidence=False,
             min_claim_words=1,
         )
         for claim in result.claims:
@@ -304,7 +305,7 @@ def markdown(results: list[dict[str, Any]], contradiction: dict[str, Any]) -> st
 def main(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(prog="groundsight bench detect", description=__doc__)
     parser.add_argument("--checkers", nargs="+", default=["cosine", "lexical", "nli", "minicheck"])
-    parser.add_argument("--train-per-task", type=int, default=600)
+    parser.add_argument("--train-per-task", type=int, default=300)
     parser.add_argument("--test-per-task", type=int, default=None, help="default: all 900")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--out", default="runs/detect")
@@ -317,8 +318,19 @@ def main(argv: Sequence[str]) -> int:
     print(f"train {len(train_items)} answers, test {len(test_items)} answers")
     results, contradiction, rows_by = [], {}, {}
     for name in args.checkers:
-        train = _cached_rows(out / f"rows-{name}-train.jsonl", train_items, name)
-        test = _cached_rows(out / f"rows-{name}-test.jsonl", test_items, name)
+        # Cached scores may cover a larger sample; keep exactly the answers in use.
+        train_ids = {e.id for e in train_items}
+        test_ids = {e.id for e in test_items}
+        train = [
+            r
+            for r in _cached_rows(out / f"rows-{name}-train.jsonl", train_items, name)
+            if r.example in train_ids
+        ]
+        test = [
+            r
+            for r in _cached_rows(out / f"rows-{name}-test.jsonl", test_items, name)
+            if r.example in test_ids
+        ]
         rows_by[name] = (train, test)
         results.append(evaluate_detection(train, test, name))
         if name == "cosine":

@@ -160,10 +160,23 @@ def test_contradiction_needs_a_passage_about_the_claim() -> None:
         def score(self, pairs):  # type: ignore[no-untyped-def]
             return [(0.0, 0.99) for _ in pairs]
 
-    related = audit("The tower is 500 metres tall.", ["The tower is 330 metres tall."],
-                    checker=Contrary(), thresholds=LIMITS)  # fmt: skip
-    unrelated = audit("Snapshots are stored in three data centres.",
-                      ["Snapshots are encrypted before they leave your device."],
-                      checker=Contrary(), thresholds=LIMITS)  # fmt: skip
+    related = audit(
+        "The tower is 500 metres tall.",
+        ["The tower is 330 metres tall."],
+        checker=Contrary(),
+        thresholds=LIMITS,
+    )
+    unrelated = audit(
+        "Snapshots are stored in three data centres.",
+        ["Snapshots are encrypted before they leave your device."],
+        checker=Contrary(),
+        thresholds=LIMITS,
+    )
     assert related.claims[0].verdict is Verdict.CONTRADICTED
     assert unrelated.claims[0].verdict is Verdict.UNSUPPORTED
+
+
+def test_evidence_can_be_skipped_for_speed() -> None:
+    fast = run("The Eiffel Tower is 500 metres tall.", [TOWER], evidence=False)
+    assert fast.claims[0].evidence is None
+    assert fast.claims[0].verdict is Verdict.CONTRADICTED
