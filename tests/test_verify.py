@@ -67,7 +67,7 @@ def test_anthropic_chat_moves_system_prompt() -> None:
     assert [m["role"] for m in seen[0]["messages"]] == ["user"]
 
 
-def test_http_errors_retry_or_fail_fast(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_http_errors_retry_or_fail_fast(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:  # type: ignore[no-untyped-def]
     waits: list[float] = []
     queue = [
         httpx.Response(429, headers={"retry-after": "1"}, json={"error": {"code": "rate_limit"}}),
@@ -84,6 +84,7 @@ def test_http_errors_retry_or_fail_fast(monkeypatch: pytest.MonkeyPatch) -> None
     assert "sk-secret" not in str(info.value)
     with pytest.raises(GenerationError, match="400"):
         chat([])
+    monkeypatch.chdir(tmp_path)  # no .env here, so no key can be found
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     with pytest.raises(GenerationError, match="OPENAI_API_KEY"):
@@ -168,3 +169,17 @@ def test_fixes_with_reference_gold_and_prompt_responder() -> None:
     assert check.confirmed
     assert is_fixed("It opened in 1889.", claim, result, get_checker("lexical"))
     assert not interventions_for(replace(claim, diagnosis=None))
+
+
+def test_keys_load_from_a_local_env_file(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
+    from groundsight.generate import load_env
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "already-set")
+    (tmp_path / ".env").write_text(
+        "# comment\nOPENAI_API_KEY='sk-from-file'\nANTHROPIC_API_KEY=ignored\nnot a pair\n"
+    )
+    assert OpenAIChat().api_key == "sk-from-file"
+    assert AnthropicChat().api_key == "already-set"
+    load_env(tmp_path / "missing.env")

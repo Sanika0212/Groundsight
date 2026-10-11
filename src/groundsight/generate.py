@@ -94,6 +94,24 @@ class PipelineResponder:
         return self.fn(question, chunks, instruction, seed)
 
 
+def load_env(path: str | os.PathLike[str] = ".env") -> None:
+    """Load ``KEY=VALUE`` lines from a local ``.env`` file; existing variables win.
+
+    Keys are only ever read into the environment of this process, never logged.
+    """
+    from pathlib import Path
+
+    env = Path(path)
+    if not env.is_file():
+        return
+    for line in env.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
 class GenerationError(RuntimeError):
     """The model API refused a request (no credit, bad key, unknown model, ...)."""
 
@@ -148,6 +166,8 @@ class OpenAIChat(_HTTPChat):
 
     def __post_init__(self) -> None:
         self.name = f"openai:{self.model}"
+        if not self.api_key and not os.environ.get("OPENAI_API_KEY"):
+            load_env()
         self.api_key = self.api_key or os.environ.get("OPENAI_API_KEY")
         self.base_url = (
             self.base_url or os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1"
@@ -183,6 +203,8 @@ class AnthropicChat(_HTTPChat):
 
     def __post_init__(self) -> None:
         self.name = f"anthropic:{self.model}"
+        if not self.api_key and not os.environ.get("ANTHROPIC_API_KEY"):
+            load_env()
         self.api_key = self.api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise GenerationError("set ANTHROPIC_API_KEY or pass api_key")
