@@ -90,7 +90,7 @@ The model's clean answer is the reference. For each kept instance:
 Reproduce:
 
 ```bash
-uv run groundsight bench faults --questions 400 --samples 3 --out runs/faults
+uv run groundsight bench faults --questions 250 --samples 3 --out runs/faults
 ```
 
 ## Limits

@@ -42,9 +42,19 @@ Scoring details:
 
 The verdict follows from two thresholds:
 
-1. **supported** if support ≥ `support` and the claim is not contradicted;
-2. **contradicted** if contradiction ≥ `contradiction` and contradiction > support;
+1. **supported** if support ≥ `support`;
+2. **contradicted** if the claim is not supported and contradiction ≥ `contradiction`;
 3. **unsupported** otherwise.
+
+The support checker alone decides whether a claim is flagged. On RAGTruth, NLI
+contradiction scores barely tracked the annotated conflicts (precision 4% to 7%,
+against a 3.3% base rate), and letting them override a supported verdict added false
+alarms without improving detection. So "contradicted" is a hint about *why* an
+unsupported claim fails, and feeds triage. The fault benchmark measures how triage
+fares with it on short, factual passages (HotpotQA paragraphs).
+`Thresholds(contradiction_overrides_support=True)` flags supported claims that another
+passage strongly contradicts. Use it to catch conflicting sources when you have no
+reference answer.
 
 ## Calibration and the recall guarantee
 
