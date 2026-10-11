@@ -52,10 +52,12 @@ class LocalScorer:
         encoded = tok(answer, add_special_tokens=False, return_offsets_mapping=True)
         answer_ids = torch.tensor([encoded["input_ids"]], device=prompt.device)
         ids = torch.cat([prompt, answer_ids], dim=1)
+        n = answer_ids.shape[1]
         with torch.inference_mode():
-            logits = self.chat.model(ids).logits.float()
-        start = prompt.shape[1]
-        logprobs = torch.log_softmax(logits[0, start - 1 : -1], dim=-1)
+            # logits only where the answer is predicted: the full prompt's logits over a
+            # 150k-token vocabulary would cost about a gigabyte per pass
+            logits = self.chat.model(ids, logits_to_keep=n + 1).logits.float()
+        logprobs = torch.log_softmax(logits[0, :-1], dim=-1)
         token_lp = logprobs.gather(1, answer_ids[0].unsqueeze(1)).squeeze(1).cpu().numpy()
         offsets = encoded["offset_mapping"]
         out = []
