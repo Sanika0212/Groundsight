@@ -260,7 +260,9 @@ def _value_column(ax: Axes, y: float, text: str, theme: Theme, bold: bool) -> No
     )
 
 
-def plot_detection(results: list[dict[str, Any]], sentences: int, out: Path, mode: str) -> Path:
+def plot_detection(
+    results: list[dict[str, Any]], sentences: int, answers: int, out: Path, mode: str
+) -> Path:
     theme = use_theme(mode)
     rows = [r for r in results if r["checker"] in LABELS]
     rows.sort(key=lambda r: r["auroc"])
@@ -268,7 +270,7 @@ def plot_detection(results: list[dict[str, Any]], sentences: int, out: Path, mod
     _title(
         fig,
         "Does the source support this sentence?",
-        f"RAGTruth test set, {sentences:,} answer sentences from 2,700 LLM answers. Area "
+        f"RAGTruth test set, {sentences:,} answer sentences from {answers:,} LLM answers. Area "
         "under the ROC curve for\nflagging the sentences that annotators marked as "
         "hallucinated (50% = chance).",
         theme,
@@ -667,9 +669,17 @@ def main() -> None:
         data = json.loads(detect.read_text())
         results = data["detection"]
         sentences = max(r.get("test_sentences", 0) for r in results)
+        rows_file = detect.parent / "rows-minicheck-test.jsonl"
+        answers = (
+            len(
+                {json.loads(line)["example"] for line in rows_file.read_text().splitlines() if line}
+            )
+            if rows_file.exists()
+            else 0
+        )
         default = next((r for r in results if r["checker"] == "minicheck"), results[0])
         for mode in THEMES:
-            plot_detection(results, sentences, ASSETS / f"detection-{mode}.png", mode)
+            plot_detection(results, sentences, answers, ASSETS / f"detection-{mode}.png", mode)
             plot_conformal(
                 default["conformal"], default["checker"], ASSETS / f"recall-{mode}.png", mode
             )
