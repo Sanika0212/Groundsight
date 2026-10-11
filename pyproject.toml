@@ -7,8 +7,8 @@ name = "groundsight"
 version = "0.1.0"
 description = "See which claims in a RAG answer your sources don't support, why, and which fix works"
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Sanika Najan", email = "sanikanajan@gmail.com" }]
 requires-python = ">=3.11"
 keywords = ["rag", "hallucination", "grounding", "fact-checking", "attribution", "llm", "evaluation"]

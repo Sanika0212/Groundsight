@@ -38,3 +38,8 @@ loaded before pytest-cov starts, so `--cov` would miss the module-level lines.
    the passage span it rests on.
 4. Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`,
    `docs:`, `test:`, `chore:`, `ci:`).
+
+## License of contributions
+
+By contributing, you agree that your contributions are licensed under the Apache
+License 2.0, the license of this project.

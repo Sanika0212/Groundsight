@@ -221,4 +221,9 @@ uv run coverage run -m pytest && uv run coverage report      # no weights, no ne
 
 ## License
 
-MIT © 2026 Sanika Najan. See [LICENSE](LICENSE).
+Apache License 2.0. Copyright 2026 Sanika Najan. See [LICENSE](LICENSE) and
+[NOTICE](NOTICE).
+
+Model weights and benchmark datasets are downloaded at run time and keep their own
+licenses: MiniCheck is MIT-licensed; the NLI cross-encoders, HHEM, all-MiniLM-L6-v2
+and the Qwen2.5 instruct models are Apache-2.0; HotpotQA is CC BY-SA 4.0.
