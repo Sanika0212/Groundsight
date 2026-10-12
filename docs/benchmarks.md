@@ -1,7 +1,8 @@
 # Benchmarks
 
 All numbers in the README come from the two suites below. Both run locally with open
-models; neither calls a paid API.
+models. One extra run of the second suite uses gpt-4.1-mini as the answering model, to
+check that triage and attribution transfer to a hosted model.
 
 ## B1: claim-level detection on RAGTruth
 
@@ -61,7 +62,10 @@ gold. The answering model is Qwen2.5-1.5B-Instruct, run locally.
 1. The model answers with the clean context (greedy decoding). Questions it gets wrong
    are dropped.
 2. One fault is injected and the question is answered again. Only instances whose
-   answer turns wrong are kept, so the fault is the cause by construction.
+   answer turns wrong are kept, so the fault is the cause by construction. An answer
+   counts as right when it contains the gold answer, or at least two thirds of the
+   words of a gold name of three or more words ("Muslim Magomayev" for "Muslim
+   Magometovich Magomayev").
 
 | Fault | Change | Expected cause |
 |---|---|---|
@@ -91,6 +95,16 @@ Reproduce:
 
 ```bash
 uv run groundsight bench faults --questions 250 --samples 3 --out runs/faults
+```
+
+The hosted-model run answers with gpt-4.1-mini (150 questions; the answers are cached in
+`instances.json`, so rescoring makes no API calls). Verification is reported for the
+local model only: its replays cost nothing, while replaying a hosted model costs a call
+per sample.
+
+```bash
+uv run groundsight bench faults --model openai:gpt-4.1-mini --questions 150 \
+    --skip-verify --out runs/faults-gpt-4.1-mini
 ```
 
 ## Limits

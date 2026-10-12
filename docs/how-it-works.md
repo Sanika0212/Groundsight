@@ -80,16 +80,25 @@ Every flagged claim gets a *probable cause*. The rules use three signals:
 1. which passages support or contradict the claim;
 2. how topically related the closest passage is (word overlap: a relevance signal,
    never a grounding signal);
-3. when a reference answer is given, whether any passage contains that answer.
+3. when a reference answer is given, which passages hold that answer.
+
+With a reference answer, where the answer is decides first. A contradiction from a
+passage about something nearby says little next to "the right answer was never in the
+context". Reference answers are often two-hop sentences ("X, founded by Y, is in Z")
+that no single passage entails, so a passage also counts as holding the answer when it
+contains most of the reference's wording (beyond the question's) and the words of the
+right answer that the claim lacks. A passage with the reference's wording but without
+those words *restates the reference with a different answer*: the source says
+something else.
 
 | Cause | Pattern | Where to fix it |
 |---|---|---|
-| retrieval miss | nothing in the context covers the claim (or the reference) | corpus, retriever |
-| misleading source | a passage supports the claim, but the claim contradicts the reference | the source document |
-| conflicting sources | one passage supports the claim, another contradicts it | corpus hygiene, prompt |
-| misread context | a passage contradicts the claim | prompt, decoding, model |
-| unsupported addition | the topic is covered but the claim is not stated | prompt, citations |
-| buried evidence | the needed passage sits mid-context (not among the first two or last two) | reranking, fewer passages |
+| retrieval miss | no passage holds the reference answer, and none states the claim; without a reference, nothing covers the claim | corpus, retriever |
+| misleading source | no passage holds the reference answer, and a passage states the claim or restates the reference with a different answer | the source document |
+| conflicting sources | one passage holds the answer while another restates it differently; or one supports the claim and another contradicts it | corpus hygiene, prompt |
+| buried evidence | the answer is only in passages mid-context (not among the first two or last two) | reranking, fewer passages |
+| misread context | a passage contradicts the claim, and the answer was in plain view | prompt, decoding, model |
+| unsupported addition | the topic (or the answer) is covered, but the claim goes beyond it | prompt, citations |
 
 The cause is a hypothesis until it is verified.
 
