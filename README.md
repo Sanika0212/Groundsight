@@ -172,12 +172,48 @@ them.
 
 ## Results
 
-The two benchmarks are being finalised. [docs/benchmarks.md](docs/benchmarks.md) has
-the setup:
+Every number comes from [docs/benchmarks.md](docs/benchmarks.md), with the commands to
+reproduce it.
 
-1. claim-level detection on RAGTruth;
-2. triage, verification and attribution on HotpotQA answers broken by injected faults,
-   both with a local model and with gpt-4.1-mini.
+### Does the source support this sentence?
+
+[RAGTruth](https://huggingface.co/datasets/wandb/RAGTruth-processed) has answers from six
+LLMs to question answering, summarisation and data-to-text tasks, with human annotations
+of every hallucinated span. Thresholds were fitted on 900 training answers; everything
+below is measured on 900 test answers (6,170 sentences).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/detection-dark.png">
+  <img alt="AUROC for flagging hallucinated sentences: MiniCheck 81%, NLI 65%, word overlap 64%, embedding similarity 61%" src="docs/assets/detection-light.png" width="100%">
+</picture>
+
+| Checker | AUROC | Balanced accuracy | QA | Summary | Data to text |
+|---|---|---|---|---|---|
+| **MiniCheck (Groundsight default for support)** | **0.809** | **0.744** | 0.839 | 0.816 | 0.761 |
+| NLI (DeBERTa-v3) | 0.653 | 0.613 | 0.793 | 0.610 | 0.592 |
+| Word overlap | 0.641 | 0.600 | 0.693 | 0.600 | 0.577 |
+| Embedding similarity (common in RAG tooling) | 0.605 | 0.595 | 0.605 | 0.506 | 0.546 |
+
+Embedding similarity, the usual "groundedness" score, is barely better than chance on
+summaries (0.506): a sentence can be about the source without being supported by it.
+
+**Pick the recall you need.** Ask for a recall target and Groundsight sets the threshold
+with a conformal guarantee on held-out data; the false-alarm rate is the price.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/recall-dark.png">
+  <img alt="Bars: at target recall 80%, 90% and 95%, achieved recall 81%, 90% and 95% with false alarms of 32%, 49% and 63%" src="docs/assets/recall-light.png" width="100%">
+</picture>
+
+| Target recall | Achieved on test | Supported sentences flagged anyway |
+|---|---|---|
+| 80% | 80.8% | 31.8% |
+| 90% | 90.3% | 49.3% |
+| 95% | 94.9% | 62.5% |
+
+### Why did it go wrong, and does the fix work?
+
+<!-- fault results -->
 
 ## Limits
 
