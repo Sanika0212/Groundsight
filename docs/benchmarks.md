@@ -50,7 +50,9 @@ uv run groundsight bench detect --checkers cosine lexical nli minicheck \
 ```
 
 Sentence scores are cached in `runs/detect/rows-*.jsonl`, so rerunning with other
-checkers reuses them. `hhem` is supported (add it to `--checkers`) but was not part of
+checkers reuses them. The detection run predates the short-answer rule (a short answer
+is checked together with its question); the rule applies to at most 12 of the 6,170
+test sentences, so the numbers stand. `hhem` is supported (add it to `--checkers`) but was not part of
 the reported run: it executes the model repository's own code and would have added
 several hours on a laptop.
 

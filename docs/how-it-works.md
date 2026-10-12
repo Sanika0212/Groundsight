@@ -11,6 +11,13 @@ The splitter handles abbreviations ("Dr.", "e.g."), initials, decimals, list ite
 headings. Sentences shorter than `min_claim_words` (default 3) are skipped. Each
 remaining sentence is a claim.
 
+A short answer is often not a sentence at all: "Birmingham, Alabama". On its own it
+says nothing a passage could support or contradict. When the question is given and the
+whole answer is a single sentence or fragment of at most `short_answer_words` (default
+8) words, the answer is one claim, checked as the question followed by the answer
+("Where was the founder born? Birmingham, Alabama"). Its offsets still cover the
+answer.
+
 ## 2. Checking: supported, contradicted or unsupported
 
 Each claim is scored against every passage by a *checker*: a model that reads
