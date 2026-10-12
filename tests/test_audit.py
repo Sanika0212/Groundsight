@@ -269,3 +269,22 @@ def test_two_hop_reference_finds_conflicting_copies_and_buried_answers() -> None
     middle = [*filler[:3], original, *filler[3:]]
     buried = run(claim, middle, question=question, reference=reference)
     assert causes(buried) == [Cause.BURIED_EVIDENCE]
+
+
+def test_short_answers_are_checked_with_their_question() -> None:
+    chunks = ["The founder was born in Selma, Alabama.", "Paris has many museums."]
+    bare = run("Birmingham, Alabama", chunks)
+    assert bare.claims == []  # two words: not a claim on its own
+    asked = run("Birmingham, Alabama", chunks, question="Where was the founder born?")
+    assert len(asked.claims) == 1
+    claim = asked.claims[0]
+    assert claim.text == "Birmingham, Alabama"
+    assert (claim.start, claim.end) == (0, len("Birmingham, Alabama"))
+    supported = run(
+        "Birmingham, Alabama",
+        ["The founder was born in Birmingham, Alabama."],
+        question="Where was the founder born?",
+    )
+    assert supported.claims[0].verdict is Verdict.SUPPORTED
+    two = run("Tulips bloom. Roses need pruning.", chunks, question="Flowers?")
+    assert [c.text for c in two.claims] == ["Roses need pruning."]  # sentences stay sentences

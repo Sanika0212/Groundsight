@@ -75,6 +75,7 @@ def audit(
     target_recall: float | None = None,
     max_words: int = 250,
     min_claim_words: int = 3,
+    short_answer_words: int = 8,
     joint: bool = True,
     evidence: bool = True,
     diagnose: bool = True,
@@ -95,6 +96,9 @@ def audit(
             least this share of unsupported claims (split conformal guarantee).
         max_words: long chunks are checked in windows of at most this many words.
         min_claim_words: sentences shorter than this are not treated as claims.
+        short_answer_words: an answer this short ("Birmingham, Alabama") is not a claim
+            on its own; with a question it is checked as one claim, question and answer
+            together, so that it says something the passages can support or not.
         joint: also check each claim against all chunks together, so a claim that
             combines facts from two passages can be supported.
         evidence: point each claim at its best evidence sentence. This rescores the
@@ -105,6 +109,13 @@ def audit(
     check = get_checker(checker)
     limits = resolve_thresholds(check, thresholds, target_recall)
     claims = sentences(answer, min_words=min_claim_words)
+    texts = [c.text for c in claims]  # what is checked for each claim
+    stripped = answer.strip()
+    short = stripped and len(stripped.split()) <= short_answer_words
+    if question and short and len(sentences(stripped)) <= 1:
+        start = answer.index(stripped)
+        claims = [Segment(stripped, start, start + len(stripped))]
+        texts = [f"{question.strip()} {stripped}"]
 
     chunk_windows = {c.id: windows(c.text, max_words=max_words) for c in chunk_list}
     joint_text = "\n\n".join(c.text for c in chunk_list)
@@ -112,16 +123,16 @@ def audit(
 
     pairs: list[tuple[str, str]] = []
     index: list[tuple[int, str, int]] = []  # (claim, chunk id or "*", window)
-    for ci, claim in enumerate(claims):
+    for ci, text in enumerate(texts):
         for chunk in chunk_list:
             for wi, win in enumerate(chunk_windows[chunk.id]):
-                pairs.append((win.text, claim.text))
+                pairs.append((win.text, text))
                 index.append((ci, chunk.id, wi))
         if use_joint:
-            pairs.append((joint_text, claim.text))
+            pairs.append((joint_text, text))
             index.append((ci, "*", 0))
         if reference:
-            pairs.append((reference, claim.text))
+            pairs.append((reference, text))
             index.append((ci, "reference", 0))
     scores = check.score(pairs) if pairs else []
     gate = limits.contradiction_overlap
@@ -159,13 +170,13 @@ def audit(
                 contradiction=contradiction,
                 verdict=verdict,
                 per_chunk=per_chunk,
-                relevance=max((overlap(c.text, claim.text) for c in chunk_list), default=0.0),
+                relevance=max((overlap(c.text, texts[ci]) for c in chunk_list), default=0.0),
                 reference_conflict=conflict,
             )
         )
 
     if evidence:
-        _attach_evidence(results, chunk_list, chunk_windows, window_scores, check)
+        _attach_evidence(results, chunk_list, chunk_windows, window_scores, check, texts)
     result = Audit(
         answer=answer,
         chunks=chunk_list,
@@ -190,6 +201,7 @@ def _attach_evidence(
     chunk_windows: Mapping[str, list[Segment]],
     window_scores: Mapping[tuple[int, str, int], tuple[float, float]],
     check: Checker,
+    texts: Sequence[str],
 ) -> None:
     """Point each claim at the sentence that best supports or contradicts it.
 
@@ -214,7 +226,7 @@ def _attach_evidence(
     owners = []
     for claim, _chunk_id, win, _ in picks:
         for sent in sentences(win.text):
-            pairs.append((sent.text, claim.text))
+            pairs.append((sent.text, texts[claim.index]))
             owners.append((claim.index, sent))
     sentence_scores = check.score(pairs) if pairs else []
 
