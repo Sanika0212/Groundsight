@@ -84,7 +84,17 @@ def normalize(text: str) -> str:
 
 
 def correct(answer: str, gold: str) -> bool:
-    return normalize(gold) in normalize(answer)
+    """The answer names the gold answer: all of it, or (for names of three or more words)
+    at least two thirds of its words, so "Muslim Magomayev" counts for "Muslim
+    Magometovich Magomayev"."""
+    want, have = normalize(gold), normalize(answer)
+    if want in have:
+        return True
+    words = want.split()
+    if len(words) < 3:
+        return False
+    found = sum(1 for w in words if re.search(rf"\b{re.escape(w)}\b", have))
+    return found / len(words) >= 2 / 3
 
 
 def load_questions(limit: int, seed: int = 0) -> list[Question]:
@@ -291,15 +301,17 @@ def evaluate_verification(
                 done[row.pop("key")] = row
     rows: list[dict[str, Any]] = []
     for n, (inst, result) in enumerate(zip(instances, audits, strict=True)):
-        key = hashlib.sha256(
-            f"{inst.fault}|{inst.question}|{inst.faulted_answer}".encode()
-        ).hexdigest()
-        if key in done:
-            rows.append(done[key])
-            continue
         claim = first_flag(result)
         if claim is None or claim.diagnosis is None:
             rows.append({"fault": inst.fault, "verified": None})
+            continue
+        # the replay depends on the diagnosed cause, so the cause is part of the key
+        key = hashlib.sha256(
+            f"{inst.fault}|{inst.question}|{inst.faulted_answer}|{claim.index}|"
+            f"{claim.diagnosis.cause.value}".encode()
+        ).hexdigest()
+        if key in done:
+            rows.append(done[key])
             continue
         gold = inst.gold_text if inst.fault == "retrieval_miss" else None
         checks = verify(result, responder, samples=samples, claims=[claim.index], gold=gold)
@@ -494,6 +506,12 @@ def main(argv: Sequence[str]) -> int:
         data = json.loads(cached.read_text())
         instances = [Instance(**i) for i in data["instances"]]
         stats = data["stats"]
+        # instances built before the fairer correctness check: keep only real breakages
+        kept = [i for i in instances if not correct(i.faulted_answer, i.answer)]
+        if len(kept) < len(instances):
+            print(f"dropped {len(instances) - len(kept)} instances whose answer was still right")
+            stats = {**stats, "dropped_still_correct": len(instances) - len(kept)}
+            instances = kept
     else:
         questions = load_questions(args.questions, args.seed)
         print(f"{len(questions)} questions; building instances with {args.model}")

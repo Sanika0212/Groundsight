@@ -158,3 +158,9 @@ def test_remote_models_ask_first_and_estimate(
     assert faults.make_generator("anthropic:m")[1]
     monkeypatch.setattr("builtins.input", lambda prompt: "no")
     assert faults.main(["--model", "openai:gpt-x", "--out", str(tmp_path)]) == 1
+
+
+def test_correct_accepts_most_of_a_long_name() -> None:
+    assert correct("The singer is Muslim Magomayev.", "Muslim Magometovich Magomayev")
+    assert not correct("The singer is Muslim Ali.", "Muslim Magometovich Magomayev")
+    assert not correct("It was in Lincoln County.", "Nelson County")
