@@ -213,7 +213,49 @@ with a conformal guarantee on held-out data; the false-alarm rate is the price.
 
 ### Why did it go wrong, and does the fix work?
 
-<!-- fault results -->
+HotpotQA questions are answered correctly with clean context, then one fault is
+injected into the context and the question is answered again. Only answers that turn
+wrong are kept, so the injected fault is the cause by construction: gold passages
+removed, the answer edited inside a gold passage, an edited copy added next to the
+original, or the gold passages moved to the middle of a long context. The answers come
+from a local model (Qwen2.5-1.5B, 251 broken answers) and from gpt-4.1-mini (143).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/triage-dark.png">
+  <img alt="Bars per injected fault: triage names the cause 61%, 37%, 26% and 56% of the time; replay confirms it 10%, 1%, 19% and 30% of the time" src="docs/assets/triage-light.png" width="100%">
+</picture>
+
+| Injected fault | Flagged | Triage names it: local model | Triage names it: gpt-4.1-mini | Replay with the fix, against resampling (local) |
+|---|---|---|---|---|
+| Gold passages removed | 98% | 61% | 72% | 18% vs 4% |
+| Answer edited in the source | 96% | 37% | 47% | 5% vs 6% |
+| Edited copy added | 91% | 26% | 33% (n = 9) | 49% vs 20% |
+| Gold buried mid-context | 85% | 56% | 25% (n = 4) | 62% vs 23% |
+| **All** (majority-class baseline) | | **47%** (39%) | **57%** (48%) | |
+
+1. **Groundsight flags 85% to 98% of the broken answers.** Short answers ("Birmingham,
+   Alabama") are checked together with their question; without that, half the local
+   model's answers were never checked at all.
+2. **Triage is a hypothesis, better than guessing but far from certain**: 47% and 57%
+   against 39% and 48% for always naming the most common cause. An edited source is the
+   hardest case: the answer repeats a passage, so nothing in the context contradicts it.
+3. **Replay separates causes that triage alone cannot.** Moving a buried passage to the
+   front fixes 62% of answers, against 23% when the same question is simply asked again;
+   dropping a conflicting copy fixes 49% against 20%. Replaying an edited source cannot
+   help (5% against 6%): the fix there is to correct the document, not the prompt.
+
+**Which passage made the model say it?** For the 119 local answers broken by an edited
+passage, scoring the claim's own tokens with and without each passage ranks the edited
+passage first 64% of the time with the answering model and 66% with a 0.5B proxy,
+against 49% for the most similar embedding and 10% at random. With gpt-4.1-mini, whose
+likelihoods are not available, the proxy ranks it first 64% of the time (59 answers),
+against 42% for embeddings.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/attribution-dark.png">
+  <img alt="Bars: likelihood ablation 64% with the same model and 66% with a 0.5B proxy, word overlap 61%, embedding 49%, random 10%" src="docs/assets/attribution-light.png" width="100%">
+</picture>
+
 
 ## Limits
 
