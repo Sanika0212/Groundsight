@@ -21,7 +21,7 @@ cause                       evidence pattern
 
 from __future__ import annotations
 
-from groundsight.checkers import Checker
+from groundsight.checkers import Checker, content_words
 from groundsight.model import Audit, Cause, ClaimCheck, Diagnosis, Verdict
 from groundsight.text import windows
 
@@ -79,6 +79,36 @@ def _answer_chunks(audit: Audit, checker: Checker | None) -> list[str] | None:
     return [c.id for c in audit.chunks if c.id in supported]
 
 
+def _reference_passages(
+    audit: Audit, claim: ClaimCheck, answer_chunks: list[str], share: float = 0.5
+) -> tuple[list[str], list[str]]:
+    """Passages that hold the right answer, and passages that restate the reference but
+    say something else.
+
+    A two-hop reference ("X was born in Y, the capital of Z") is entailed by no single
+    passage, so the checker's ``answer_chunks`` can miss the passage that holds it. As a
+    fallback, a passage *holds the answer* if it contains most of the reference's wording
+    (beyond the question's) and most of the words of the right answer that the claim
+    lacks; it *restates* the reference if it has the wording but not those words.
+    """
+    wording = content_words(audit.reference or "") - content_words(audit.question or "")
+    right = wording - content_words(claim.text)
+    holders: list[str] = list(answer_chunks)
+    restating: list[str] = []
+    if len(wording) < 2:
+        return holders, restating
+    for chunk in audit.chunks:
+        words = content_words(chunk.text)
+        if chunk.id in holders or len(wording & words) / len(wording) < share:
+            continue
+        if right and len(right & words) / len(right) >= share:
+            holders.append(chunk.id)
+        else:
+            restating.append(chunk.id)
+    order = {c.id: i for i, c in enumerate(audit.chunks)}
+    return sorted(holders, key=order.__getitem__), restating
+
+
 def _diagnose_claim(
     claim: ClaimCheck,
     audit: Audit,
@@ -92,7 +122,6 @@ def _diagnose_claim(
     contradictors = [
         cid for cid, (s, c) in claim.per_chunk.items() if c >= limits.contradiction and c > s
     ]
-    buried = [cid for cid in (answer_chunks or []) if is_middle(order[cid], total)]
 
     def make(cause: Cause, reason: str, chunk_ids: list[str]) -> Diagnosis:
         return Diagnosis(cause=cause, reason=reason, fix=FIXES[cause], chunk_ids=chunk_ids)
@@ -111,6 +140,40 @@ def _diagnose_claim(
             f"The claim repeats {named}, but it contradicts the reference answer.",
             supporters,
         )
+    if answer_chunks is not None:
+        # With a reference answer, where the right answer is (or is not) comes first: a
+        # contradiction from a passage about something else says little next to it.
+        holders, restating = _reference_passages(audit, claim, answer_chunks)
+        if holders and restating:
+            return make(
+                Cause.CONFLICTING_SOURCES,
+                f"{_label(audit, restating[0])} restates the reference with a different "
+                f"answer, while {_label(audit, holders[0])} has the right one.",
+                restating + holders,
+            )
+        if not holders:
+            if supporters or restating:
+                culprits = supporters or restating
+                named = ", ".join(_label(audit, c) for c in culprits)
+                return make(
+                    Cause.MISLEADING_SOURCE,
+                    f"{named} says what the claim says, and no passage has the reference "
+                    "answer: the source itself is wrong.",
+                    culprits,
+                )
+            return make(
+                Cause.RETRIEVAL_MISS,
+                "No passage supports the claim, and none contains the reference answer.",
+                [],
+            )
+        answer_chunks = holders
+        if all(is_middle(order[cid], total) for cid in answer_chunks):
+            return make(
+                Cause.BURIED_EVIDENCE,
+                f"The answer is only in {_label(audit, answer_chunks[0])}, in the middle of "
+                "a long context, where models attend least.",
+                answer_chunks,
+            )
     if claim.verdict is Verdict.CONTRADICTED:
         if supporters:
             return make(
@@ -124,7 +187,7 @@ def _diagnose_claim(
             if contradictors
             else max(claim.per_chunk, key=lambda cid: claim.per_chunk[cid][1])
         )
-        if is_middle(order[culprit], total):
+        if answer_chunks is None and is_middle(order[culprit], total):
             return make(
                 Cause.BURIED_EVIDENCE,
                 f"{_label(audit, culprit)} contradicts the claim, and it sits in the middle "
@@ -137,20 +200,7 @@ def _diagnose_claim(
             [culprit],
         )
     # Unsupported (or reference conflict without any supporting passage).
-    if answer_chunks is not None:
-        if not answer_chunks:
-            return make(
-                Cause.RETRIEVAL_MISS,
-                "No passage supports the claim, and none contains the reference answer.",
-                [],
-            )
-        if buried:
-            return make(
-                Cause.BURIED_EVIDENCE,
-                f"The answer is in {_label(audit, buried[0])}, in the middle of a long "
-                "context, but the claim isn't supported by any passage.",
-                buried,
-            )
+    if answer_chunks:
         return make(
             Cause.UNSUPPORTED_ADDITION,
             f"The context contains the answer ({_label(audit, answer_chunks[0])}), but the "

@@ -133,6 +133,33 @@ def test_triage_with_reference_answer() -> None:
     assert causes(padded) == [Cause.UNSUPPORTED_ADDITION]
 
 
+def test_reference_answer_outranks_noisy_contradictions() -> None:
+    """With a reference, where the answer is decides before passage contradictions do."""
+    filler = [f"Paris has many museums, number {i}." for i in range(6)]
+    # gold removed: a passage on a related topic contradicts the claim, but the context
+    # never held the right answer, so the cause is the retrieval
+    related = ["The Eiffel Tower is 330 metres tall.", *filler]
+    gone = run("The tower opened in 1925.", related, reference="It opened in 1889.")
+    assert causes(gone) == [Cause.RETRIEVAL_MISS]
+    # a passage states the wrong claim and none has the reference: the source misled
+    edited = run(
+        "The tower opened to visitors in 1925.",
+        ["The tower opened to visitors in 1925.", *filler],
+        reference="The tower opened to visitors in 1889.",
+    )
+    assert causes(edited) == [Cause.MISLEADING_SOURCE]
+    # the answer is only in the middle of a long context, even though the claim is
+    # contradicted there: buried, not misread
+    context = [*filler[:3], "The tower opened to visitors in 1889.", *filler[3:]]
+    buried = run("The tower opened to visitors in 1925.", context, reference="It opened in 1889.")
+    assert causes(buried) == [Cause.BURIED_EVIDENCE]
+    # the answer is at the front and the claim contradicts it: misread
+    front = run(
+        "The tower opened to visitors in 1925.", context[3:], reference="It opened in 1889."
+    )
+    assert causes(front) in ([Cause.MISREAD_CONTEXT], [Cause.UNSUPPORTED_ADDITION])
+
+
 def test_conflicting_passages_without_reference() -> None:
     result = run(
         "The Eiffel Tower is 300 metres tall.",
@@ -190,3 +217,55 @@ def test_support_alone_decides_flags_unless_overrides_are_enabled() -> None:
     disputes = Thresholds(support=0.6, contradiction=0.5, contradiction_overrides_support=True)
     assert disputes.verdict(0.9, 0.99) is Verdict.CONTRADICTED
     assert disputes.verdict(0.9, 0.7) is Verdict.SUPPORTED  # contradiction must beat support
+
+
+def test_restated_reference_means_a_misleading_source() -> None:
+    filler = [f"Paris has many museums, number {i}." for i in range(5)]
+    edited = "A 2002 comedy horror by Amberley Village."
+    result = run(
+        "Makdee was made by Amberley Village, a Mumbai director known for horror comedies.",
+        [*filler, edited],
+        question="Who directed Makdee?",
+        reference="The 2002 comedy horror film Makdee was directed by Vishal Bhardwaj.",
+    )
+    claim = result.flagged[0]
+    assert claim.diagnosis is not None
+    assert claim.diagnosis.cause is Cause.MISLEADING_SOURCE
+    assert claim.diagnosis.chunk_ids == ["c5"]
+    # without a passage resembling the reference, it is a retrieval miss
+    missing = run(
+        "Makdee was made by Amberley Village, a Mumbai director known for horror comedies.",
+        filler,
+        question="Who directed Makdee?",
+        reference="The 2002 comedy horror film Makdee was directed by Vishal Bhardwaj.",
+    )
+    assert causes(missing) == [Cause.RETRIEVAL_MISS]
+
+
+def test_two_hop_reference_finds_conflicting_copies_and_buried_answers() -> None:
+    filler = [f"Paris has many museums, number {i}." for i in range(6)]
+    question = "Who directed the 2002 film produced by the studio in Mumbai?"
+    reference = "Makdee, the 2002 comedy horror film, was directed by Vishal Bhardwaj."
+    original = "Makdee is a comedy horror film from 2002 directed by Vishal Bhardwaj."
+    copy = "Makdee is a comedy horror film from 2002 directed by Amberley Village."
+    claim = (
+        "Makdee, the 2002 comedy horror film, was directed by Amberley Village, a young "
+        "newcomer with a small budget and unknown actors."
+    )
+    from groundsight.checkers import content_words
+
+    class Strict(LexicalChecker):
+        """Supports only when every content word of the claim is in the passage."""
+
+        def score(self, pairs):  # type: ignore[no-untyped-def]
+            return [(float(content_words(c) <= content_words(p)), 0.0) for p, c in pairs]
+
+    def run(answer, chunks, **kwargs):  # type: ignore[no-untyped-def]
+        return audit(answer, chunks, checker=Strict(), thresholds=LIMITS, **kwargs)
+
+    both = run(claim, [original, *filler, copy], question=question, reference=reference)
+    assert causes(both) == [Cause.CONFLICTING_SOURCES]
+    assert both.flagged[0].diagnosis.chunk_ids == ["c7", "c0"]  # type: ignore[union-attr]
+    middle = [*filler[:3], original, *filler[3:]]
+    buried = run(claim, middle, question=question, reference=reference)
+    assert causes(buried) == [Cause.BURIED_EVIDENCE]
